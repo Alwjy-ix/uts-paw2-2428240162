@@ -1,173 +1,99 @@
-const peralatanlab = require("../models/peralatanLabModel");
 
-// GET /scholarships
-async function getAll(req, res, next) {
-  try {
-    const { kondisi} = req.query;
 
-    let filter = {};
+const peralatanLab = require('../models/peralatanLabModel');
+const laboratorium = require('../models/laboratoriumModel');
+const { errorHttp } = require('../middlewares/errorHandler');
 
-    if (kondisi) {
-      filter.jenjang = kondisi;
-    }
+const LIMIT_DEFAULT = 10;
+const LIMIT_MAKS = 50;
+const FIELD_SORT = ['kodeAlatLab', 'createdAt'];
+const FIELD_BOLEH_DIPILIH = ['nama', 'kondisi', 'jumlah','createdAt'];
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 2;
-
-    const skip = (page - 1) * limit;
-
-    const sort = {};
-
-    if (req.query.sortBy) {
-      sort[req.query.sortBy] = req.query.order === "desc" ? -1 : 1;
-    }
-
-    let projection = {};
-
-    if (req.query.fields) {
-      const fields = req.query.fields.split(",");
-
-      fields.forEach((field) => {
-        projection[field] = 1;
-      });
-    }
-
-    const data = await Laboratorium.find(filter, projection)
-      .populate("laboratorium")
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
-
-    res.json(data);
-  } catch (error) {
-    next(error);
-  }
+// Mengubah bilangan dari query string menjadi bilangan bulat yang aman
+function angkaAman(nilai, bawaan, min, maks) {
+  const n = parseInt(nilai, 10);
+  if (Number.isNaN(n)) return bawaan;
+  return Math.min(Math.max(n, min), maks);
 }
 
-// GET /scholarships/:id
-async function getById(req, res, next) {
+exports.create = async (req, res) => {
   try {
-    const data = await Laboratorium.findById(req.params.id).populate(
-      "laboratorium",
-    );
-
-    if (!data) {
-      return res.status(404).json({
-        status: "error",
-        message: "Data lab tidak ditemukan",
-        data: null,
-      });
-    }
-
-    res.json(data);
-  } catch (error) {
-    next(error);
+    const peralatanLab = await peralatanLab.create(req.body);
+    res.status(201).json(peralatanLab);
+  } catch (err) {
+    res.status(400).json({ message: err.message }); 
   }
-}
+};
 
-// POST /scholarships
-async function create(req, res, next) {
-  try {
-    const { kodeAlatLab, nama, jumlah, kondisi, spesifikasi } =
-      req.body;
-
-    if (
-      !kodeAlatLab ||
-      !nama ||
-      !jumlah ||
-      !kondisi ||
-      !spesifikasi
-    ) {
-      return res.status(400).json({
-        status: "error",
-        message: "Semua data wajib diisi",
-        data: null,
-      });
-    }
-
-    const baru = await Scholarship.create(req.body);
-    await baru.populate("organizer");
-
-    res.status(201).json({
-      status: "success",
-      message: "Data beasiswa berhasil ditambahkan",
-      data: baru,
-    });
-  } catch (error) {
-    next(error);
+exports.getAll = async (req, res) => {  
+  const filter = {};
+  if (req.query.kondisi) {
+    filter['kondisi'] = String(req.query.kondisi);
   }
-}
-
-// PUT /scholarships/:id
-async function update(req, res, next) {
-  try {
-    const { namaBeasiswa, penyelenggara, nominal, jenjang, batasPendaftaran } =
-      req.body;
-
-    if (
-      !namaBeasiswa ||
-      !penyelenggara ||
-      !nominal ||
-      !jenjang ||
-      !batasPendaftaran
-    ) {
-      return res.status(400).json({
-        status: "error",
-        message: "Semua data wajib diisi",
-        data: null,
-      });
-    }
-
-    const data = await Scholarship.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    }).populate("organizer");
-
-    if (!data) {
-      return res.status(404).json({
-        status: "error",
-        message: "Data beasiswa tidak ditemukan",
-        data: null,
-      });
-    }
-
-    res.status(200).json({
-      status: "success",
-      message: "Data beasiswa berhasil diperbarui",
-      data: data,
-    });
-  } catch (error) {
-    next(error);
+  if (req.query.laboratorium) {
+    const laboratorium = await laboratorium.findOne({ kode: String(req.query.laboratorium).toUpperCase() });
+    // Kode prodi tidak dikenal -> hasil kosong ($in: [] tidak cocok dengan apa pun)
+    filter.prodiId = prodi ? prodi._id : { $in: [] };
   }
-}
 
-// DELETE /scholarships/:id
-async function remove(req, res, next) {
-  try {
-    const data = await Scholarship.findByIdAndDelete(req.params.id);
-
-    if (!data) {
-      return res.status(404).json({
-        status: "error",
-        message: "Data beasiswa tidak ditemukan",
-        data: null,
-      });
+  const page = angkaAman(req.query.page, 1, 1, Number.MAX_SAFE_INTEGER);
+  const limit = angkaAman(req.query.limit, LIMIT_DEFAULT, 1, LIMIT_MAKS);
+  
+  // Sorting: ?sort=nama (naik) atau ?sort=-nama (turun). Bawaan: terbaru dulu
+  const sortParam = String(req.query.sort || '-createdAt');
+  const arah = sortParam.startsWith('-') ? -1 : 1;
+  const sortField = sortParam.replace(/^-/, '');
+    // Projection: ?fields=nama,nim
+  let select = '';
+  if (req.query.fields) {
+    const fields = String(req.query.fields).split(',').map((f) => f.trim());
+    if (!fields.every((f) => FIELD_BOLEH_DIPILIH.includes(f))) {
+      throw errorHttp(400, `fields hanya boleh: ${FIELD_BOLEH_DIPILIH.join(', ')}`);
     }
-
-    res.status(200).json({
-      status: "success",
-      message: "Data beasiswa berhasil dihapus",
-      data: null,
-    });
-  } catch (error) {
-    next(error);
+    select = fields.join(' ');
   }
-}
+  
+  if (!FIELD_SORT.includes(sortField)) {
+    throw errorHttp(400, `sort hanya boleh: ${FIELD_SORT.join(', ')}`);
+  }
 
-module.exports = {
-  getAll,
-  getById,
-  create,
-  update,
-  remove,
+
+    const query = Mahasiswa.find(filter)
+    .select(select)
+    .sort({ [sortField]: arah, _id: 1 })
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  // populate() otomatis menambahkan prodiId ke hasil, jadi hanya dipanggil
+  // bila prodiId memang diminta (atau bila tidak ada pemilihan field)
+  if (!select || select.split(' ').includes('prodiId')) {
+    query.populate('prodiId', 'kode nama');
+  }
+
+  const [data, total] = await Promise.all([query, Mahasiswa.countDocuments(filter)]);
+
+  res.json({ data, page, limit, total, totalPages: Math.ceil(total / limit) });
+};
+
+
+exports.getById = async (req, res) => {
+  const data = await Mahasiswa.findById(req.params.id).populate('prodiId');
+  if (!data) throw errorHttp(404, 'Data tidak ditemukan');
+  res.json(data);
+};
+
+exports.update = async (req, res) => {
+  const data = await Mahasiswa.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { returnDocument: 'after', runValidators: true }
+  );
+  if (!data) throw errorHttp(404, 'Data tidak ditemukan');
+  res.json(data);
+};
+
+exports.remove = async (req, res) => {
+  const data = await Mahasiswa.findByIdAndDelete(req.params.id);
+  if (!data) throw errorHttp(404, 'Data tidak ditemukan');
+  res.status(204).send();
 };
