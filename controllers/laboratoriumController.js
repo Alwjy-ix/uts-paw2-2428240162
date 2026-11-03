@@ -103,7 +103,7 @@ async function update(req, res, next) {
   try {
     const { namaBeasiswa, penyelenggara, nominal, jenjang, batasPendaftaran } =
       req.body;
-
+ 
     if (
       !namaBeasiswa ||
       !penyelenggara ||
