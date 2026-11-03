@@ -1,0 +1,67 @@
+require('dotenv').config();
+
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+
+function logger(req, res, next) {
+  const waktu = new Date().toISOString();
+  console.log(`[${waktu}] ${req.method} ${req.url}`);
+  next();
+}
+
+function cekApiKey(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+
+  if (apiKey !== process.env.API_KEY) {
+    return res.status(401).json({ message: 'API key tidak valid' });
+  }
+
+  next();
+}
+
+function errorHttp(status, message) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+// Import handler & routes
+const { notFoundHandler, errorHandler } = require('./middlewares/errorHandler');
+const peralatanlabRoutes = require('./routes/peralatanlabRoutes');
+const laboratoriumRoutes = require('./routes/laboratoriumRoutes');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ---------- Middleware global ----------
+app.use(logger);
+app.use(cors({
+  origin: process.env.CORS_ORIGIN,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+}));
+
+app.use(express.json());
+
+// ---------- Route Utama ----------
+app.get('/', (req, res) => {
+  res.send('Server Express.js berjalan!');
+});
+
+app.use('/peralatanlab', peralatan-labRoutes);
+app.use('/laboratorium', laboratoriumRoutes);
+
+
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+// ---------- Koneksi Database & Server ----------
+mongoose.connect(process.env.DB_URI)
+  .then(() => {
+    console.log('Terhubung ke MongoDB');
+    app.listen(PORT, () => console.log(`Server berjalan di http://localhost:${PORT}`));
+  })
+  .catch((err) => {
+    console.error('Gagal terhubung ke MongoDB:', err.message);
+    process.exit(1);
+  });
