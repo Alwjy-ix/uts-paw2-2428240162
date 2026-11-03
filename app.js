@@ -48,7 +48,7 @@ app.get('/', (req, res) => {
   res.send('Server Express.js berjalan!');
 });
 
-app.use('/peralatanlab', peralatan-labRoutes);
+app.use('/peralatanlab', peralatanlabRoutes);
 app.use('/laboratorium', laboratoriumRoutes);
 
 
