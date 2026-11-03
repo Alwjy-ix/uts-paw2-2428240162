@@ -4,23 +4,18 @@ const mongoose = require("mongoose");
 const peralatanLabModelSchema = new mongoose.Schema({
   kodeAlatLab: { type: String, required: [true, 'kode wajib diisi'], unique: true, trim: true },
   nama: { type: String, required: [true, 'nama wajib diisi'], trim: true },
-  alamat: alamatSchema, 
-  prodiId: { type: mongoose.Schema.Types.ObjectId, ref: 'Prodi' },
-  createdAt: { type: Date, default: Date.now },
+  jumlah: { type: Number,required: true,},
   createdAt: { type: Date, default: Date.now },
 
-//   // EMBEDDING
-//   persyaratan: {
-//     type: [String],
-//     default: [],
-//   },
+  // EMBEDDING
+  spesifikasi : { merek: String, tahun: String },
 
-//   // REFERENCING
-//   organizer: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: "Organizer",
-//     required: true,
-//   },
+  // REFERENCING
+  laboratorium : {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Laboratorium",
+    required: true,
+  },
 
 
 });
