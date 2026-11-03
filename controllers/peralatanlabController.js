@@ -33,7 +33,7 @@ exports.getAll = async (req, res) => {
   if (req.query.laboratorium) {
     const laboratorium = await laboratorium.findOne({ kode: String(req.query.laboratorium).toUpperCase() });
     // Kode prodi tidak dikenal -> hasil kosong ($in: [] tidak cocok dengan apa pun)
-    filter.prodiId = prodi ? prodi._id : { $in: [] };
+    filter.laboratoriumId = laboratorium ? laboratorium._id : { $in: [] };
   }
 
   const page = angkaAman(req.query.page, 1, 1, Number.MAX_SAFE_INTEGER);
@@ -58,7 +58,7 @@ exports.getAll = async (req, res) => {
   }
 
 
-    const query = Mahasiswa.find(filter)
+    const query = peralatanLab.find(filter)
     .select(select)
     .sort({ [sortField]: arah, _id: 1 })
     .skip((page - 1) * limit)
@@ -66,24 +66,24 @@ exports.getAll = async (req, res) => {
 
   // populate() otomatis menambahkan prodiId ke hasil, jadi hanya dipanggil
   // bila prodiId memang diminta (atau bila tidak ada pemilihan field)
-  if (!select || select.split(' ').includes('prodiId')) {
-    query.populate('prodiId', 'kode nama');
+  if (!select || select.split(' ').includes('laboratoriumId')) {
+    query.populate('laboratoriumId', 'kode nama');
   }
 
-  const [data, total] = await Promise.all([query, Mahasiswa.countDocuments(filter)]);
+  const [data, total] = await Promise.all([query, peralatanLab.countDocuments(filter)]);
 
   res.json({ data, page, limit, total, totalPages: Math.ceil(total / limit) });
 };
 
 
 exports.getById = async (req, res) => {
-  const data = await Mahasiswa.findById(req.params.id).populate('prodiId');
+  const data = await peralatanLab.findById(req.params.id).populate('laboratoriumId');
   if (!data) throw errorHttp(404, 'Data tidak ditemukan');
   res.json(data);
 };
 
 exports.update = async (req, res) => {
-  const data = await Mahasiswa.findByIdAndUpdate(
+  const data = await peralatanLab.findByIdAndUpdate(
     req.params.id,
     req.body,
     { returnDocument: 'after', runValidators: true }
@@ -93,7 +93,7 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const data = await Mahasiswa.findByIdAndDelete(req.params.id);
+  const data = await peralatanLab.findByIdAndDelete(req.params.id);
   if (!data) throw errorHttp(404, 'Data tidak ditemukan');
   res.status(204).send();
 };

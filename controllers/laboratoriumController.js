@@ -47,7 +47,7 @@ async function getAll(req, res, next) {
 // GET /scholarships/:id
 async function getById(req, res, next) {
   try {
-    const data = await Laboratorium.findById(req.params.id).populate(
+    const data = await laboratorium.findById(req.params.id).populate(
       "laboratorium",
     );
 
@@ -85,12 +85,12 @@ async function create(req, res, next) {
       });
     }
 
-    const baru = await Scholarship.create(req.body);
-    await baru.populate("organizer");
+    const baru = await peralatanlab.create(req.body);
+    await baru.populate("laboratorium");
 
     res.status(201).json({
       status: "success",
-      message: "Data beasiswa berhasil ditambahkan",
+      message: "Data lab berhasil ditambahkan",
       data: baru,
     });
   } catch (error) {
@@ -118,22 +118,22 @@ async function update(req, res, next) {
       });
     }
 
-    const data = await Scholarship.findByIdAndUpdate(req.params.id, req.body, {
+    const data = await peralatanlab.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
-    }).populate("organizer");
+    }).populate("laboratorium");
 
     if (!data) {
       return res.status(404).json({
         status: "error",
-        message: "Data beasiswa tidak ditemukan",
+        message: "Data lab tidak ditemukan",
         data: null,
       });
     }
 
     res.status(200).json({
       status: "success",
-      message: "Data beasiswa berhasil diperbarui",
+      message: "Data lab berhasil diperbarui",
       data: data,
     });
   } catch (error) {
@@ -144,19 +144,19 @@ async function update(req, res, next) {
 // DELETE /scholarships/:id
 async function remove(req, res, next) {
   try {
-    const data = await Scholarship.findByIdAndDelete(req.params.id);
+    const data = await peralatanlab.findByIdAndDelete(req.params.id);
 
     if (!data) {
       return res.status(404).json({
         status: "error",
-        message: "Data beasiswa tidak ditemukan",
+        message: "Data lab tidak ditemukan",
         data: null,
       });
     }
 
     res.status(200).json({
       status: "success",
-      message: "Data beasiswa berhasil dihapus",
+      message: "Data lab berhasil dihapus",
       data: null,
     });
   } catch (error) {
